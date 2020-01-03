@@ -28,7 +28,7 @@ def get_thumbnail_sizes() -> Tuple[ImgSize, ...]:
 
 
 def get_monitored_paths() -> Tuple[str, ...]:
-    var = os.getenv('THUMB_SIZES')
+    var = os.getenv('MONITORED_PATHS')
     if not var:
         return ()
     paths = []
