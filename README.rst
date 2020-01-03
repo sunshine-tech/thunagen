@@ -26,8 +26,7 @@ The function expect these environment variables to be set:
 
 - ``THUMB_SIZES``: Size of thumbnail to be generated. Example: ``512x512,128x128``.
 
-- ``MONITORED_PATHS``: Folder (and its children) where the function will process the uploaded images.
-    Muliple paths are separated by ":", like ``user-docs:user-profiles``.
+- ``MONITORED_PATHS``: Folders (and theirs children) where the function will process the uploaded images. Muliple paths are separated by ":", like ``user-docs:user-profiles``.
 
 The variables can be passed via *.env* file in the working directory.
 
