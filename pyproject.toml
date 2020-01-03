@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "thunagen"
+version = "0.1.0"
+description = "Google Cloud function to generate thumbnail for images in Google Storage."
+authors = ["Nguyễn Hồng Quân <ng.hong.quan@gmail.com>"]
+maintainers = [
+    "Nguyễn Hồng Quân <ng.hong.quan@gmail.com>"
+]
+license = "Apache-2.0"
+readme = "README.rst"
+repository = "https://github.com/sunshine-tech/thunagen.git"
+classifiers = [
+    "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Environment :: Web Environment"
+]
+keywords = ["google", "cloud", "storage", "functions", "thumbnail"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+Pillow = "^7.0.0"
+google-cloud-storage = "^1.24.1"
+logbook = "^1.5.3"
+lazy_object_proxy = "^1.4.3"
+python-dotenv = "^0.10.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+pytest-logbook = "^1.2.0"
+pytest-flake8 = "^1.0.4"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
