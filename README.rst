@@ -30,6 +30,20 @@ The function expect these environment variables to be set:
 
 The variables can be passed via *.env* file in the working directory.
 
+Why Thunagen
+------------
+
+I'm aware that there is already a `Firebase extension <https://firebase.google.com/products/extensions/storage-resize-images>`_ which does the same thing.
+But that extension, when doing its job, need to create a temporary file and in many cases, falling into race condition when the temporary file is deleted by another execution of the same cloud function. Thunagen, on the other hand, generates the file and uploads (back to Storage) on-the-fly (in memory), so it doesn't get into that issue.
+
+Installation
+------------
+
+Thunagen is distributed via PyPI. You can install it with ``pip``::
+
+    pip install thunagen
+
+
 Include to your project
 -----------------------
 

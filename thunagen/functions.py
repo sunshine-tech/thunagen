@@ -6,15 +6,16 @@ from logbook import Logger
 from PIL import Image
 from PIL import UnidentifiedImageError
 from google.cloud import storage
+from google.cloud.exceptions import NotFound
 
 from .common import GCFContext, ImgSize, Thumbnail
 from .conf import get_monitored_paths, get_thumbnail_sizes
 
 
-SUBFOLDER = 'thumbnails'
+THUMB_SUBFOLDER = 'thumbnails'
 logger = Logger(__name__)
 # Laziyly instantiate Google Cloud client, so that it won't break unittest
-store = lazy_object_proxy.Proxy(storage.Client)
+store = lazy_object_proxy.Proxy(storage.Client)   # type: storage.Client
 
 
 def build_thumbnail_path(original: PurePosixPath, size: ImgSize) -> PurePosixPath:
@@ -27,11 +28,11 @@ def build_thumbnail_path(original: PurePosixPath, size: ImgSize) -> PurePosixPat
     '''
     ext = original.suffix
     folder = original.parent
-    return folder / SUBFOLDER / f'{original.stem}_{size}{ext}'
+    return folder / THUMB_SUBFOLDER / f'{original.stem}_{size}{ext}'
 
 
 def upload(bucket: storage.Bucket, thumb: Thumbnail):
-    blob = bucket.blob(thumb.path)
+    blob = bucket.blob(str(thumb.path))
     blob.upload_from_string(thumb.content, thumb.mimetype)
     logger.info('Uploaded {}.', thumb.path)
 
@@ -48,28 +49,41 @@ def create_thumbnail(orig: Image.Image, size: ImgSize, orpath: PurePosixPath) ->
     return Thumbnail(out.getvalue(), thumbpath, size, mimetype)
 
 
+def delete_thumbnails(bucket: storage.Bucket, orpath: PurePosixPath):
+    folder = orpath.parent
+    prefix = folder / THUMB_SUBFOLDER / orpath.stem
+    blobs = storage.list_blobs(bucket, prefix=str(prefix), fields='item(name)')
+    bucket.delete_blobs(blobs, on_error=lambda b: logger.error('File {} seems to be deleted before.', b.name))
+
+
 def generate_gs_thumbnail(data: dict, context: GCFContext):
     '''Background Cloud Function to be triggered by Cloud Storage'''
     event_type = context.event_type
     if event_type != 'google.storage.object.finalize' and event_type != 'google.storage.object.delete':
-        return
-    if event_type == 'google.storage.object.delete':
+        # Not the event we want
         return
     filepath = data['name']   # type: str
     if not any(filepath.startswith(p) for p in get_monitored_paths()):
-        logger.error('File {} is not watched. Ignore.', filepath)
-        return
-    content_type = data['contentType']  # type: str
-    if not content_type.startswith('image/'):
-        logger.info('The file {} is not an image (content type {}). Ignore.', filepath, content_type)
+        logger.debug('File {} is not watched. Ignore.', filepath)
         return
     filepath = PurePosixPath(filepath)
     folder_name = filepath.parent.name
-    if folder_name == SUBFOLDER:
+    if folder_name == THUMB_SUBFOLDER:
         logger.info('The file {} is already a thumbnail. Ignore.', filepath)
         return
+    content_type = data['contentType']  # type: str
+    if not content_type.startswith('image/'):
+        logger.debug('The file {} is not an image (content type {}). Ignore.', filepath, content_type)
+        return
     bucket = store.get_bucket(data['bucket'])
-    blob = bucket.get_blob(str(filepath))
+    if event_type == 'google.storage.object.delete':
+        delete_thumbnails(bucket, filepath)
+        return
+    try:
+        blob = bucket.get_blob(str(filepath))
+    except NotFound:
+        logger.error('File {} was deleted by another job.', filepath)
+        return
     filecontent = blob.download_as_string()
     try:
         orig = Image.open(BytesIO(filecontent))    # type: Image.Image
