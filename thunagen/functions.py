@@ -8,6 +8,7 @@ from PIL import UnidentifiedImageError
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
+from thunagen import __version__
 from .common import GCFContext, ImgSize, Thumbnail
 from .conf import get_monitored_paths, get_thumbnail_sizes
 
@@ -35,6 +36,9 @@ def upload(bucket: storage.Bucket, thumb: Thumbnail):
     blob = bucket.blob(str(thumb.path))
     blob.upload_from_string(thumb.content, thumb.mimetype)
     logger.info('Uploaded {}.', thumb.path)
+    # TODO: Copy ALC from original image
+    blob.make_public()
+    blob.metadata = {'Generator': f'Thunagen v{__version__}'}
 
 
 def create_thumbnail(orig: Image.Image, size: ImgSize, orpath: PurePosixPath) -> Thumbnail:
