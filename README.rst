@@ -3,6 +3,10 @@ Thunagen
 ========
 
 
+.. image:: https://badge.fury.io/py/thunagen.svg
+   :target: https://pypi.org/project/thunagen/
+
+
 Google Cloud function to generate thumbnail for images in Google Storage.
 
 Convention
@@ -47,7 +51,7 @@ Thunagen is distributed via PyPI. You can install it with ``pip``::
 Include to your project
 -----------------------
 
-Thunagen is provided without a *main.py* file, for you to easier incorporate to your project, where you may have your own way to configure deployment environment (different bucket for "staging" and "production", for example).
+Thunagen is provided without a *main.py* file, for you to incorporate more easily to your project, where you may have your own way to configure deployment environment (different bucket for "staging" and "production", for example).
 
 To include Thunagen, from your *main.py*, do:
 

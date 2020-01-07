@@ -33,12 +33,21 @@ def build_thumbnail_path(original: PurePosixPath, size: ImgSize) -> PurePosixPat
 
 
 def upload(bucket: storage.Bucket, thumb: Thumbnail):
+    # Test if a thumbnail file has been created by other cloud function
+    blob = bucket.get_blob(str(thumb.path))
+    if blob:
+        logger.info('A file at {} already exists. Perhap some other cloud function created it. Skip.', thumb.path)
+        return
+    # Noone create thumbnail yet. Upload ours.
     blob = bucket.blob(str(thumb.path))
     blob.upload_from_string(thumb.content, thumb.mimetype)
     logger.info('Uploaded {}.', thumb.path)
-    # TODO: Copy ALC from original image
+    # TODO: Copy ACL from original image
     blob.make_public()
-    blob.metadata = {'Generator': f'Thunagen v{__version__}'}
+    meta = {'Generator': f'Thunagen v{__version__}'}
+    blob.metadata = meta
+    blob.update()
+    logger.debug('Made {} public and set metadata {}', thumb.path, meta)
 
 
 def create_thumbnail(orig: Image.Image, size: ImgSize, orpath: PurePosixPath) -> Thumbnail:
