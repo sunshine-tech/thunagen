@@ -31,8 +31,8 @@ def get_monitored_paths() -> Tuple[str, ...]:
     var = os.getenv('MONITORED_PATHS')
     if not var:
         return ()
-    paths = []
-    for p in var.split(':'):
-        if p:
-            paths.append(p)
-    return tuple(paths)
+    configured_paths = tuple(p for p in var.split(':') if p)
+    # If '/' (root) appears in list of paths, return only it.
+    if '/' in configured_paths:
+        return ('/',)
+    return configured_paths

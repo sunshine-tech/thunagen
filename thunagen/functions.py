@@ -8,7 +8,7 @@ from PIL import UnidentifiedImageError
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
-from thunagen import __version__
+from . import __version__
 from .common import GCFContext, ImgSize, Thumbnail
 from .conf import get_monitored_paths, get_thumbnail_sizes
 
@@ -76,7 +76,9 @@ def generate_gs_thumbnail(data: dict, context: GCFContext):
         # Not the event we want
         return
     filepath = data['name']   # type: str
-    if not any(filepath.startswith(p) for p in get_monitored_paths()):
+    monitored_paths = get_monitored_paths()
+    # If root folder "/" is in watchlist, accept all path
+    if not any(filepath.startswith(p) for p in monitored_paths) and '/' not in monitored_paths:
         logger.debug('File {} is not watched. Ignore.', filepath)
         return
     filepath = PurePosixPath(filepath)
