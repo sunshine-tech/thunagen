@@ -3,7 +3,6 @@ import time
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import Dict
-from collections import deque
 from urllib.parse import quote_plus
 
 import lazy_object_proxy
@@ -13,6 +12,8 @@ from PIL import UnidentifiedImageError
 from google.cloud import storage
 from google.cloud import pubsub_v1
 from google.cloud.exceptions import NotFound
+from google.cloud.pubsub_v1.publisher.futures import Future
+from google.api_core.exceptions import GoogleAPICallError, RetryError
 
 from . import __version__
 from .common import GCFContext, ImgSize, Thumbnail
@@ -80,13 +81,17 @@ def delete_thumbnails(bucket: storage.Bucket, orpath: PurePosixPath):
 def notify_thumbnails_generated(project_id: str, original_path: str, generated: Dict[str, str]):
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(project_id, quote_plus(f'{TOPIC_PREFIX}/{original_path}'))
-    logger.debug('Publish to: {}', topic_path)
+    logger.debug('To publish to: {}', topic_path)
+    try:
+        publisher.create_topic(topic_path)
+    except (GoogleAPICallError, RetryError) as e:
+        logger.error('Failed to create topic {}. Error: {}', topic_path, e)
+        return
     data = json.dumps(generated).encode()
-    futures = deque()
-    futures.append(publisher.publish(topic_path, data))
+    future = publisher.publish(topic_path, data)  # type: Future
     # Google Cloud's Future object cannot be checked with Python concurent.futures module
     for i in range(4):
-        if all(f.done() for f in futures):
+        if future.done():
             break
         time.sleep(1)
 
