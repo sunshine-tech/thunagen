@@ -32,7 +32,7 @@ The thumbnail size is appended to filename, right before the extention part. For
             └── photo-missing-extension_512x512
 
 
-The function expect these environment variables to be set:
+The function expects these environment variables to be set:
 
 - ``THUMB_SIZES``: Size of thumbnail to be generated. Example: ``512x512,128x128``.
 
@@ -40,11 +40,26 @@ The function expect these environment variables to be set:
 
 The variables can be passed via *.env* file in the working directory.
 
+After finishing generating thumbnail, the function will publish a message to Google Cloud Pub/Sub service, at topic ``thumbnail-generated/{bucket_name}/{image_path}``, with the message being JSON string of thumbnail info (size and path). Example:
+
+- Topic: ``thumbnail-generated/bucket/folder/photo.jpg``
+
+- Message:
+
+    .. code-block:: json
+
+        {
+            "128x128": "folder/thumbnails/photo_128x128.jpg",
+            "512x512": "folder/thumbnails/photo_512x512.jpg"
+        }
+
+This feature allows other application to know when the thumbnails are ready.
+
 
 Why Thunagen
 ------------
 
-I'm aware that there is already a `Firebase extension <https://firebase.google.com/products/extensions/storage-resize-images>`_ which does the same thing.
+I'm aware that there is already a `Firebase extension <https://firebase.google.com/products/extensions/storage-resize-images>`_ for the same purpose.
 But that extension, when doing its job, need to create a temporary file and in many cases, falling into race condition when the temporary file is deleted by another execution of the same cloud function. Thunagen, on the other hand, generates the file and uploads (back to Storage) on-the-fly (in memory), so it doesn't get into that issue.
 
 
@@ -71,4 +86,4 @@ To include Thunagen, from your *main.py*, do:
 Credit
 ------
 
-Thunagen is brought to you by Nguyễn Hồng Quân, from SunshineTech (Việt Nam).
+Thunagen is brought to you by `Nguyễn Hồng Quân <https://github.com/hongquan>`_, from SunshineTech (Việt Nam).

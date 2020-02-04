@@ -1,11 +1,16 @@
+import json
+import concurrent.futures
 from io import BytesIO
 from pathlib import PurePosixPath
+from typing import Dict
+from collections import deque
 
 import lazy_object_proxy
 from logbook import Logger
 from PIL import Image
 from PIL import UnidentifiedImageError
 from google.cloud import storage
+from google.cloud import pubsub_v1
 from google.cloud.exceptions import NotFound
 
 from thunagen import __version__
@@ -14,8 +19,9 @@ from .conf import get_monitored_paths, get_thumbnail_sizes
 
 
 THUMB_SUBFOLDER = 'thumbnails'
+TOPIC_PREFIX = 'thumbnail-generated'
 logger = Logger(__name__)
-# Laziyly instantiate Google Cloud client, so that it won't break unittest
+# Lazily instantiate Google Cloud client, so that it won't break unittest
 store = lazy_object_proxy.Proxy(storage.Client)   # type: storage.Client
 
 
@@ -25,19 +31,19 @@ def build_thumbnail_path(original: PurePosixPath, size: ImgSize) -> PurePosixPat
 
     Example: abc/photo.jpg -> abc/photo_512x512.jpg
     The "orignal" argument has PurePosixPath type because the path is in Google Cloud Storage context,
-    not neccessary be real filesytem path.
+    not neccessary a real filesytem path.
     '''
     ext = original.suffix
     folder = original.parent
     return folder / THUMB_SUBFOLDER / f'{original.stem}_{size}{ext}'
 
 
-def upload(bucket: storage.Bucket, thumb: Thumbnail):
+def upload(bucket: storage.Bucket, thumb: Thumbnail) -> bool:
     # Test if a thumbnail file has been created by other cloud function
     blob = bucket.get_blob(str(thumb.path))
     if blob:
         logger.info('A file at {} already exists. Perhap some other cloud function created it. Skip.', thumb.path)
-        return
+        return False
     # Noone create thumbnail yet. Upload ours.
     blob = bucket.blob(str(thumb.path))
     blob.upload_from_string(thumb.content, thumb.mimetype)
@@ -48,6 +54,7 @@ def upload(bucket: storage.Bucket, thumb: Thumbnail):
     blob.metadata = meta
     blob.update()
     logger.debug('Made {} public and set metadata {}', thumb.path, meta)
+    return True
 
 
 def create_thumbnail(orig: Image.Image, size: ImgSize, orpath: PurePosixPath) -> Thumbnail:
@@ -67,6 +74,18 @@ def delete_thumbnails(bucket: storage.Bucket, orpath: PurePosixPath):
     prefix = folder / THUMB_SUBFOLDER / orpath.stem
     blobs = storage.list_blobs(bucket, prefix=str(prefix), fields='item(name)')
     bucket.delete_blobs(blobs, on_error=lambda b: logger.error('File {} seems to be deleted before.', b.name))
+
+
+def notify_thumbnails_generated(project_id: str, original_path: str, generated: Dict[str, str]):
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(project_id, f'{TOPIC_PREFIX}/{original_path}')
+    logger.debug('Publish to: {}', topic_path)
+    data = json.dumps(generated).encode()
+    futures = deque()
+    futures.append(publisher.publish(topic_path, data))
+    done, not_done = concurrent.futures.wait(futures, timeout=4)
+    logger.debug('Done: {}', done)
+    logger.debug('Not done: {}', not_done)
 
 
 def generate_gs_thumbnail(data: dict, context: GCFContext):
@@ -103,6 +122,14 @@ def generate_gs_thumbnail(data: dict, context: GCFContext):
     except UnidentifiedImageError:
         logger.error('This image {} is not supported by Pillow.', filepath)
         return
+    generated = {}
     for size in get_thumbnail_sizes():   # type: ImgSize
         thumb = create_thumbnail(orig, size, filepath)
-        upload(bucket, thumb)
+        success = upload(bucket, thumb)
+        if success:
+            generated[str(size)] = str(thumb.path)
+    project = store.project
+    logger.debug('Thumbnails generated: {}', generated)
+    if generated:
+        original_path = f'{bucket.name}/{blob.name}'
+        notify_thumbnails_generated(project, original_path, generated)
