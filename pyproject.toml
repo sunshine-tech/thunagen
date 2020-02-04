@@ -25,6 +25,8 @@ logbook = "^1.5.3"
 lazy_object_proxy = "^1.4.3"
 python-dotenv = "^0.10.3"
 importlib_metadata = "^1.3.0"
+google-cloud-pubsub = "^1.1.0"
+single-version = "^1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

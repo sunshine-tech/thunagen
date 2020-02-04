@@ -3,6 +3,7 @@ Thunagen
 ========
 
 
+.. image:: https://madewithlove.now.sh/vn?heart=true&colorA=%23ffcd00&colorB=%23da251d
 .. image:: https://badge.fury.io/py/thunagen.svg
    :target: https://pypi.org/project/thunagen/
 
@@ -19,12 +20,17 @@ The thumbnail size is appended to filename, right before the extention part. For
 
 .. code-block::
 
-    bucket
-    └── folder
+    bucket/
+    └── folder/
         ├── photo.jpg
-        └── thumbnails
+        └── thumbnails/
             ├── photo_128x128.jpg
             └── photo_512x512.jpg
+        ├── photo-missing-extension
+        └── thumbnails/
+            ├── photo-missing-extension_128x128
+            └── photo-missing-extension_512x512
+
 
 The function expect these environment variables to be set:
 
@@ -34,11 +40,13 @@ The function expect these environment variables to be set:
 
 The variables can be passed via *.env* file in the working directory.
 
+
 Why Thunagen
 ------------
 
 I'm aware that there is already a `Firebase extension <https://firebase.google.com/products/extensions/storage-resize-images>`_ which does the same thing.
 But that extension, when doing its job, need to create a temporary file and in many cases, falling into race condition when the temporary file is deleted by another execution of the same cloud function. Thunagen, on the other hand, generates the file and uploads (back to Storage) on-the-fly (in memory), so it doesn't get into that issue.
+
 
 Installation
 ------------
@@ -58,3 +66,9 @@ To include Thunagen, from your *main.py*, do:
 .. code-block:: py
 
     from thunagen.functions import generate_gs_thumbnail
+
+
+Credit
+------
+
+Thunagen is brought to you by Nguyễn Hồng Quân, from SunshineTech (Việt Nam).
