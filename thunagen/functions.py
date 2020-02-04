@@ -1,10 +1,10 @@
 import json
 import time
-import urllib.parse
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import Dict
 from collections import deque
+from urllib.parse import quote_plus
 
 import lazy_object_proxy
 from logbook import Logger
@@ -79,12 +79,11 @@ def delete_thumbnails(bucket: storage.Bucket, orpath: PurePosixPath):
 
 def notify_thumbnails_generated(project_id: str, original_path: str, generated: Dict[str, str]):
     publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(project_id, urllib.parse.quote_plus(f'{TOPIC_PREFIX}/{original_path}'))
+    topic_path = publisher.topic_path(project_id, quote_plus(f'{TOPIC_PREFIX}/{original_path}'))
     logger.debug('Publish to: {}', topic_path)
-    topic = publisher.create_topic(topic_path)
     data = json.dumps(generated).encode()
     futures = deque()
-    futures.append(publisher.publish(topic, data))
+    futures.append(publisher.publish(topic_path, data))
     # Google Cloud's Future object cannot be checked with Python concurent.futures module
     for i in range(4):
         if all(f.done() for f in futures):
