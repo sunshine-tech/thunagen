@@ -1,5 +1,5 @@
 import json
-import concurrent.futures
+import time
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import Dict
@@ -83,9 +83,11 @@ def notify_thumbnails_generated(project_id: str, original_path: str, generated: 
     data = json.dumps(generated).encode()
     futures = deque()
     futures.append(publisher.publish(topic_path, data))
-    done, not_done = concurrent.futures.wait(futures, timeout=4)
-    logger.debug('Done: {}', done)
-    logger.debug('Not done: {}', not_done)
+    # Google Cloud's Future object cannot be checked with Python concurent.futures module
+    for i in range(4):
+        if all(f.done() for f in futures):
+            break
+        time.sleep(1)
 
 
 def generate_gs_thumbnail(data: dict, context: GCFContext):
