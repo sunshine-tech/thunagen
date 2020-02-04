@@ -1,5 +1,6 @@
 import json
 import time
+import urllib.parse
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import Dict
@@ -78,9 +79,9 @@ def delete_thumbnails(bucket: storage.Bucket, orpath: PurePosixPath):
 
 def notify_thumbnails_generated(project_id: str, original_path: str, generated: Dict[str, str]):
     publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(project_id, f'{TOPIC_PREFIX}/{original_path}')
-    topic = publisher.create_topic(topic_path)
+    topic_path = publisher.topic_path(project_id, urllib.parse.quote_plus(f'{TOPIC_PREFIX}/{original_path}'))
     logger.debug('Publish to: {}', topic_path)
+    topic = publisher.create_topic(topic_path)
     data = json.dumps(generated).encode()
     futures = deque()
     futures.append(publisher.publish(topic, data))

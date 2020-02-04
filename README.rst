@@ -42,7 +42,7 @@ The variables can be passed via *.env* file in the working directory.
 
 After finishing generating thumbnail, the function will publish a message to Google Cloud Pub/Sub service, at topic ``thumbnail-generated/{bucket_name}/{image_path}``, with the message being JSON string of thumbnail info (size and path). Example:
 
-- Topic: ``thumbnail-generated/bucket/folder/photo.jpg``
+- Topic: ``thumbnail-generated%2Fbucket%2Ffolder%2Fphoto.jpg`` (URL-encoded of "thumbnail-generated/bucket/folder/photo.jpg")
 
 - Message:
 
