@@ -79,10 +79,11 @@ def delete_thumbnails(bucket: storage.Bucket, orpath: PurePosixPath):
 def notify_thumbnails_generated(project_id: str, original_path: str, generated: Dict[str, str]):
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(project_id, f'{TOPIC_PREFIX}/{original_path}')
+    topic = publisher.create_topic(topic_path)
     logger.debug('Publish to: {}', topic_path)
     data = json.dumps(generated).encode()
     futures = deque()
-    futures.append(publisher.publish(topic_path, data))
+    futures.append(publisher.publish(topic, data))
     # Google Cloud's Future object cannot be checked with Python concurent.futures module
     for i in range(4):
         if all(f.done() for f in futures):
