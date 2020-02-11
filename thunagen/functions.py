@@ -3,6 +3,7 @@ import time
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import Dict
+from datetime import datetime
 from urllib.parse import quote_plus
 
 import lazy_object_proxy
@@ -11,6 +12,7 @@ from PIL import Image
 from PIL import UnidentifiedImageError
 from google.cloud import storage
 from google.cloud import pubsub_v1
+from google.cloud.storage import Bucket
 from google.cloud.exceptions import NotFound
 from google.cloud.pubsub_v1.publisher.futures import Future
 from google.api_core.exceptions import GoogleAPICallError, RetryError
@@ -41,12 +43,6 @@ def build_thumbnail_path(original: PurePosixPath, size: ImgSize) -> PurePosixPat
 
 
 def upload(bucket: storage.Bucket, thumb: Thumbnail) -> bool:
-    # Test if a thumbnail file has been created by other cloud function
-    blob = bucket.get_blob(str(thumb.path))
-    if blob:
-        logger.info('A file at {} already exists. Perhap some other cloud function created it. Skip.', thumb.path)
-        return False
-    # Noone create thumbnail yet. Upload ours.
     blob = bucket.blob(str(thumb.path))
     blob.upload_from_string(thumb.content, thumb.mimetype)
     logger.info('Uploaded {}.', thumb.path)
@@ -71,7 +67,7 @@ def create_thumbnail(orig: Image.Image, size: ImgSize, orpath: PurePosixPath) ->
     return Thumbnail(out.getvalue(), thumbpath, size, mimetype)
 
 
-def delete_thumbnails(bucket: storage.Bucket, orpath: PurePosixPath):
+def delete_thumbnails(bucket: Bucket, orpath: PurePosixPath):
     folder = orpath.parent
     prefix = folder / THUMB_SUBFOLDER / orpath.stem
     blobs = storage.list_blobs(bucket, prefix=str(prefix), fields='item(name)')
@@ -96,8 +92,16 @@ def notify_thumbnails_generated(project_id: str, original_path: str, generated: 
         time.sleep(1)
 
 
+def is_thumbnail_missing_or_obsolete(thumb_path: PurePosixPath, orig_updated_time: datetime, bucket: Bucket) -> bool:
+    thumb_blob = bucket.get_blob(str(thumb_path))
+    if not thumb_blob:
+        return True
+    return orig_updated_time > (thumb_blob.updated or thumb_blob.time_created)
+
+
 def generate_gs_thumbnail(data: dict, context: GCFContext):
     '''Background Cloud Function to be triggered by Cloud Storage'''
+    # For fields of data, look in: https://cloud.google.com/storage/docs/json_api/v1/objects#resource
     event_type = context.event_type
     if event_type != 'google.storage.object.finalize' and event_type != 'google.storage.object.delete':
         # Not the event we want
@@ -127,6 +131,7 @@ def generate_gs_thumbnail(data: dict, context: GCFContext):
         logger.error('File {} was deleted by another job.', filepath)
         return
     filecontent = blob.download_as_string()
+    file_last_uploaded = data['updated'] or data['timeCreated']
     try:
         orig = Image.open(BytesIO(filecontent))    # type: Image.Image
     except UnidentifiedImageError:
@@ -134,6 +139,11 @@ def generate_gs_thumbnail(data: dict, context: GCFContext):
         return
     generated = {}
     for size in get_thumbnail_sizes():   # type: ImgSize
+        planned_thumbpath = build_thumbnail_path(filepath, size)
+        if not is_thumbnail_missing_or_obsolete(planned_thumbpath, file_last_uploaded, bucket):
+            logger.info('Thumbnail {} already exists and newer than reported uploaded time {}. '
+                        'Perhap some other cloud function created it. Skip.', planned_thumbpath, file_last_uploaded)
+            continue
         thumb = create_thumbnail(orig, size, filepath)
         success = upload(bucket, thumb)
         if success:
