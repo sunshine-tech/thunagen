@@ -6,6 +6,7 @@ from typing import Dict
 from datetime import datetime
 from urllib.parse import quote_plus
 
+import pendulum
 import lazy_object_proxy
 from logbook import Logger
 from PIL import Image
@@ -131,7 +132,11 @@ def generate_gs_thumbnail(data: dict, context: GCFContext):
         logger.error('File {} was deleted by another job.', filepath)
         return
     filecontent = blob.download_as_string()
-    file_last_uploaded = data['updated'] or data['timeCreated']
+    try:
+        file_last_uploaded = pendulum.parse(data['updated'] or data['timeCreated'])
+    except (ValueError, TypeError):
+        logger.debug('Event data missing time fields. {}', data)
+        file_last_uploaded = pendulum.now()
     try:
         orig = Image.open(BytesIO(filecontent))    # type: Image.Image
     except UnidentifiedImageError:

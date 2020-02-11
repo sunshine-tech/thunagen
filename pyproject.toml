@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "thunagen"
-version = "0.3.6"
+version = "0.3.7"
 description = "Google Cloud function to generate thumbnail for images in Google Storage."
 authors = ["Nguyễn Hồng Quân <ng.hong.quan@gmail.com>"]
 maintainers = [
@@ -27,6 +27,7 @@ python-dotenv = "^0.10.3"
 importlib_metadata = "^1.3.0"
 google-cloud-pubsub = "^1.1.0"
 single-version = "^1.1"
+pendulum = "^2.0.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
