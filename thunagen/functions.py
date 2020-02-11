@@ -19,7 +19,7 @@ from google.api_core.exceptions import GoogleAPICallError, RetryError
 
 from . import __version__
 from .common import GCFContext, ImgSize, Thumbnail
-from .conf import get_monitored_paths, get_thumbnail_sizes
+from .conf import get_monitored_paths, get_thumbnail_sizes, should_notify
 
 
 THUMB_SUBFOLDER = 'thumbnails'
@@ -150,6 +150,6 @@ def generate_gs_thumbnail(data: dict, context: GCFContext):
             generated[str(size)] = str(thumb.path)
     project = store.project
     logger.debug('Thumbnails generated: {}', generated)
-    if generated:
+    if should_notify() and generated:
         original_path = f'{bucket.name}/{blob.name}'
         notify_thumbnails_generated(project, original_path, generated)

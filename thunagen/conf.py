@@ -36,3 +36,7 @@ def get_monitored_paths() -> Tuple[str, ...]:
     if '/' in configured_paths:
         return ('/',)
     return configured_paths
+
+
+def should_notify() -> bool:
+    return bool(os.getenv('NOTIFY_THUMBNAIL_GENERATED'))

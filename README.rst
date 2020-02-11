@@ -38,9 +38,16 @@ The function expects these environment variables to be set:
 
 - ``MONITORED_PATHS``: Folders (and theirs children) where the function will process the uploaded images. Muliple paths are separated by ":", like ``user-docs:user-profiles``. If you want to monitor all over the bucket, set it as ``/``.
 
+- ``NOTIFY_THUMBNAIL_GENERATED`` (optional): Tell Thunagen to notify after thumbnails are created.
+
 The variables can be passed via *.env* file in the working directory.
 
-After finishing generating thumbnail, the function will publish a message to Google Cloud Pub/Sub service, at topic ``thumbnail-generated/{bucket_name}/{image_path}``, with the message being JSON string of thumbnail info (size and path). Example:
+Get notified when thumbnails are generated
+------------------------------------------
+
+Other applications may want to be informed when the thumbnails are created. We support this by leveraging Google Cloud Pub/Sub service.
+
+After finishing generating thumbnail, if the ``NOTIFY_THUMBNAIL_GENERATED`` environment variable is set (with non-empty value), the function will publish a message to Pub/Sub. The message is sent to topic ``thumbnail-generated/{bucket_name}/{image_path}``, with the content being JSON string of thumbnail info (size and path). Example:
 
 - Topic: ``thumbnail-generated%2Fbucket%2Ffolder%2Fphoto.jpg`` (URL-encoded of "thumbnail-generated/bucket/folder/photo.jpg")
 
@@ -53,7 +60,7 @@ After finishing generating thumbnail, the function will publish a message to Goo
             "512x512": "folder/thumbnails/photo_512x512.jpg"
         }
 
-This feature allows other application to know when the thumbnails are ready.
+Other applications can subscribe to that topic to get notified. Google doesnot allow slash ("/") in topic name, so subscribed applications have to take care of URL-encode, decode the topic.
 
 
 Why Thunagen
