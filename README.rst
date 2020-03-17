@@ -3,6 +3,8 @@ Thunagen
 ========
 
 
+.. image:: picture-svgrepo-com.svg
+
 .. image:: https://madewithlove.now.sh/vn?heart=true&colorA=%23ffcd00&colorB=%23da251d
 .. image:: https://badge.fury.io/py/thunagen.svg
    :target: https://pypi.org/project/thunagen/

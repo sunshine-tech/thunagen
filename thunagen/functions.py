@@ -14,7 +14,7 @@ from PIL import UnidentifiedImageError
 from google.cloud import storage
 from google.cloud import pubsub_v1
 from google.cloud.storage import Bucket
-from google.cloud.exceptions import NotFound
+from google.cloud.exceptions import NotFound, ServiceUnavailable
 from google.cloud.pubsub_v1.publisher.futures import Future
 from google.api_core.exceptions import GoogleAPICallError, RetryError
 
@@ -48,11 +48,17 @@ def upload(bucket: storage.Bucket, thumb: Thumbnail) -> bool:
     blob.upload_from_string(thumb.content, thumb.mimetype)
     logger.info('Uploaded {}.', thumb.path)
     # TODO: Copy ACL from original image
-    blob.make_public()
+    try:
+        blob.make_public()
+    except ServiceUnavailable as e:
+        logger.error('Failed to make {} public.\nError: {}', blob.path, e)
     meta = {'Generator': f'Thunagen v{__version__}'}
     blob.metadata = meta
-    blob.update()
-    logger.debug('Made {} public and set metadata {}', thumb.path, meta)
+    try:
+        blob.patch()
+        logger.debug('Made {} public and set metadata {}', thumb.path, meta)
+    except NotFound:
+        logger.error('{} was deleted by someone.', blob.path)
     return True
 
 
