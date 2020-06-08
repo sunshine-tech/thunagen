@@ -34,7 +34,7 @@ def build_thumbnail_path(original: PurePosixPath, size: ImgSize) -> PurePosixPat
     '''
     Build file path for thumbnail from original file.
 
-    Example: abc/photo.jpg -> abc/photo_512x512.jpg
+    Example: abc/photo.jpg -> abc/thumbnails/photo_512x512.jpg
     The "orignal" argument has PurePosixPath type because the path is in Google Cloud Storage context,
     not neccessary a real filesytem path.
     '''
